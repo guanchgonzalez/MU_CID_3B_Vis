@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="es">
+
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>Vis Práctica Intro D3</title>
+    <script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+    <script type="text/javascript" src="sankey.js"></script>
+    <style media="screen">
+      * {
+        margin: 0%;
+        border: 0%;
+      }
+      body {
+        font-family: Arial, Helvetica, Verdana, "Latin Modern Sans", sans-serif;
+      }
+      header {
+        padding: 0%;
+        background-color: #f1f1f1;
+        text-align: center;
+      }
+      h1 {
+        padding: 15px;
+      }
+      h2 {
+        padding: 10px;
+      }
+      li {
+        padding: 10px;
+        font-size: 1.4em;
+      }
+      .plot-title {
+        padding: 10px;
+        font-size: 1em;
+        text-align: center;
+        font-style: italic;
+      }
+      .axis-labels {
+        padding: .1em;
+        font-size: .9em;
+        color: "#000000";
+      }
+      .legend-labels {
+        padding: .1em;
+        font-size: .6em;
+      }
+      .svg-container {
+        display: inline-block;
+        position: relative;
+        width: 100%;
+        height: auto;
+        padding-bottom: 80%;
+        vertical-align: top;
+        overflow: hidden;
+      }
+      .svg-content {
+        display: inline-block;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      .node rect {
+        cursor: move;
+        fill-opacity: .9;
+        shape-rendering: crispEdges;
+      }
+      .node text {
+        pointer-events: none;
+        text-shadow: 0 1px 0 #fff;
+      }
+      .link {
+        fill: none;
+        stroke: #000;
+        stroke-opacity: .2;
+      }
+      .link:hover {
+        stroke-opacity: .5;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <header id="site-header" role="banner">
+      <h1>Visualización - Principios de Diseño</h1>
+      <h2>Práctica de introducción a D3.js</h2>
+    </header>
+
+    <main id="site-content" role="main">
+
+      <div>
+        <ol>
+          <li>Diagrama de Barras
+            <p class="plot-title">
+              Tráfico de Mercancías en el puerto de S/C de La Palma
+            </p>
+            <div id="barchart_div" class="svg-container"></div>
+          </li>
+          <li>Diagrama de burbujas
+            <p class="plot-title">
+              Tráfico de Mercancías en la provincia de S/C de Tenerife
+            </p>
+            <div id="bubbleschart_div" class="svg-container"></div>
+          </li>
+          <li>Diagrama Sankey
+            <p class="plot-title">
+              Flujo de mercancías entre puertos de Canarias
+            </p>
+            <div id="sankey_div" class="svg-container"></div>
+          </li>
+        </ol>
+      </div>
+    </main>
+
+    <script id="commonElements" type="text/javascript">
+
+      // Set the graph dimensions and margins
+      var margin = {top: 45, right: 190, bottom: 80, left: 80},
+          svgWidth = 1000,
+          svgHeight = 800,
+          plotWidth = svgWidth - margin.left - margin.right,
+          plotHeight = svgHeight - margin.top - margin.bottom;
+
+      // Insert the SVG element into the DOM
+      function iniSVG (insertionDiv) {
+        return d3.select(insertionDiv)
+                  .append("svg")
+                  .attr("preserveAspectRatio", "xMinYMin")
+                  .attr("viewBox", "0 0 " + svgWidth + " " + svgHeight)
+                  .classed("svg-content", true)
+                  .append("g")
+                    .attr("transform",
+                      "translate(" + margin.left + ", " + margin.top + ")");
+      }
+
+      // Function to insert the axises units text and labels
+      function addAxisesText (svgname, xScale, xAngle, xLabel, yScale, yLabel) {
+        // X axis units text
+        svgname.append("g")
+                .attr("transform", "translate(0," + plotHeight + ")")
+                .call(d3.axisBottom(xScale).tickSizeOuter(0))
+                .selectAll("text")
+                  .attr("transform", "translate(-10,0) rotate(" + xAngle + ")")
+                  .style("text-anchor", "end");
+
+        // X axis label
+        svgname.append("text")
+                .attr("transform",
+                  "translate(" + (plotWidth / 2) + ", " + (plotHeight + 65) + ")")
+                .style("text-anchor", "middle")
+                .classed("axis-labels", true)
+                .text(xLabel);
+
+        // Y axis units text
+        svgname.append("g")
+                .call(d3.axisLeft(yScale));
+
+        // Y axix label
+        svgname.append("text")
+                .attr("transform",
+                  "translate(-65," + plotHeight / 2 + ") rotate(-90)")
+                .style("text-anchor", "middle")
+                .classed("axis-labels", true)
+                .text(yLabel);
+      }
+
+      // Function to get min value from a column in an array
+      function colMin (arr, colname) {
+        var min = Infinity,
+            row = {};
+        for(i = 0; i < arr.length; i++) {
+          row = arr[i]
+          if (parseFloat(row[colname]) < min) {
+            min = parseFloat(row[colname]);
+          }
+        }
+        return min;
+      }
+
+      // Function to get max value from a column in an array
+      function colMax (arr, colname) {
+        var max = 0,
+            row = {};
+        for(i = 0; i < arr.length; i++) {
+          row = arr[i]
+          if (parseFloat(row[colname]) > max) {
+            max = parseFloat(row[colname]);
+          }
+        }
+        return max;
+      }
+
+      // Function to draw the legend
+      function drawLegend(svgname, labelsVec, colorScale) {
+        var sqSize = 20,
+            yStartLegend = (plotHeight - labelsVec.length * (sqSize + 5)) / 2;
+
+        svgname.append("g")
+                .selectAll("squareColors")
+                .data(labelsVec.reverse())
+                .enter()
+                .append("rect")
+                  .attr("x", plotWidth + sqSize)
+                  .attr("y", function(d, i) {
+                    return yStartLegend + i * (sqSize + 5) })
+                  .attr("width", sqSize)
+                  .attr("height", sqSize)
+                  .style("fill", function (d) { return colorScale(d) });
+
+        svgname.append("g")
+                .selectAll("squareLabels")
+                .data(labelsVec)
+                .enter()
+                .append("text")
+                  .attr("x", plotWidth + 2.5 * sqSize)
+                  .attr("y", function (d, i) {
+                    return yStartLegend + i * (sqSize + 5) + (sqSize / 2) })
+                  .style("fill", function (d) { return colorScale(d) })
+                  .classed("legend-labels", true)
+                  .text(function (d) { return d })
+                  .attr("text-anchor", "left")
+                  .attr("alignment-baseline", "middle");
+      }
+
+    </script>
+
+    <script id="stackedBarsChart" type="text/javascript">
+
+      // Insert the SVG element into the DOM
+      var svgS = iniSVG("#barchart_div");
+
+      // Get the data
+      d3.csv("https://raw.githubusercontent.com/guanchgonzalez/MU_CID_3B_Vis/main/mercancias_1_SPC.csv",
+        function (dataS) {
+
+          console.log(dataS)
+
+          // Dataset headers, except the first one
+          var numericS = dataS.columns.slice(1)
+          console.log(numericS)
+
+          // Values of the first column, the date
+          var catvalsS = d3.map(dataS, function(d) { return (d.Mes) }).keys()
+          console.log(catvalsS)
+
+          // Stack values per subgroup
+          var stackedData = d3.stack()
+                              .keys(numericS)(dataS)
+          console.log(stackedData)
+
+          // Y max value for Y Scale domain
+          var yStacksMax = d3.max(stackedData.slice(-1)[0]
+                              .map(function (d) {
+                                return d[1];
+                              }));
+          console.log("max Y: " + yStacksMax)
+
+          // X scale, from domain to range
+          var xS = d3.scaleBand()
+                      .domain(catvalsS)
+                      .range([0, plotWidth])
+                      .padding([0.2]);
+
+          // Y scale, from domain to range
+          var yS = d3.scaleLinear()
+                      .domain([0, yStacksMax])
+                      .range([plotHeight, 0]);
+
+          // X, Y axises insertion
+          addAxisesText(svgS, xS, "-45", "Meses", yS, "Tons");
+
+          // Color scale per subgroup
+          var colorS = d3.scaleOrdinal()
+                          .domain(numericS)
+                          .range( [ "#00ffff", "#0080ff", "#0000ff",
+                                    "#00ff00", "#00b000", "#005000",
+                                    "#ff0080", "#c00080", "#800080", "#400080",
+                                    "#ffff80", "#ffc080", "#ff8080", "#ff4080" ] )
+
+          // Include the stacked bars
+          svgS.append("g")
+              .selectAll("g")
+              // Enter into the stack data: loop key per key (group per group)
+              .data(stackedData)
+              .enter()
+              .append("g")
+                .attr("fill", function(d) { return colorS(d.key); })
+                .selectAll("rect")
+                // Inner loop: subgroup per subgroup (every rectangle)
+                .data(function (d) { return d; })
+                .enter()
+                .append("rect")
+                  .attr("x", function (d) { return xS(d.data.Mes); })
+                  .attr("y", function (d) { return yS(d[1]); })
+                  .attr("width", xS.bandwidth())
+                  .attr("height", function (d) { return yS(d[0]) - yS(d[1]); })
+
+          // Draw legend
+          drawLegend(svgS, numericS, colorS);
+
+          console.log(colorS.domain().reverse())
+          console.log(numericS.reverse())
+          console.log(numericS.slice())
+
+        })
+
+    </script>
+
+    <script id="bubblesChart" type="text/javascript">
+
+      // Insert the SVG element into the DOM
+      var svgB = iniSVG("#bubbleschart_div");
+
+      // Get the data
+      d3.csv("https://raw.githubusercontent.com/guanchgonzalez/MU_CID_3B_Vis/main/mercancias_2.csv",
+        function (dataB) {
+
+          console.log(dataB)
+
+          // Values of the first column, the years and ports
+          var catvalsB = d3.map(dataB, function(d) { return d.A_P }).keys()
+          console.log(catvalsB)
+
+          // X, Y and R min and max values for the Scale domains
+          var xMin = colMin(dataB, "Canarias-Cargadas"),
+              xMax = colMax(dataB, "Canarias-Cargadas"),
+              yMin = colMin(dataB, "Canarias-Descargadas"),
+              yMax = colMax(dataB, "Canarias-Descargadas"),
+              rMin = colMin(dataB, "Canarias-Tránsito"),
+              rMax = colMax(dataB, "Canarias-Tránsito");
+          console.log("Dom X: " + xMin + ", " + xMax +
+                      "   Dom Y: " + yMin + ", " + yMax +
+                      "   Dom R: " + rMin + ", " + rMax);
+
+          // X axis inclusion (X scale, from domain to range)
+          var xB = d3.scaleLinear()
+                      .domain([xMin, xMax])
+                      .range([0, plotWidth]);
+
+          // Y axis inclusion (Y scale, from domain to range)
+          var yB = d3.scaleLinear()
+                      .domain([yMin, yMax])
+                      .range([plotHeight, 0]);
+
+          // X, Y axises insertion
+          addAxisesText(svgB, xB, "-30", "Tons cargadas", yB, "Tons descargadas");
+
+          // R radius inclusion (R scale, from domain to range; bubble sizes)
+          var r = d3.scaleLinear()
+                    .domain([rMin, rMax])
+                    .range([0, (plotHeight / 10)]);
+
+          // Color scale per subgroup
+          var colorB = d3.scaleOrdinal()
+                .domain(catvalsB)
+                .range( [ "#ffff80", "#00ff00", "#ff0080", "#00ffff", "#bcbc8c",
+                          "#ffc080", "#00c000", "#c00080", "#00c0ff", "#bc8c60",
+                          "#ff8080", "#008000", "#800080", "#0080ff", "#8c6000",
+                          "#ff4080", "#004000", "#400080", "#0040ff", "#603000" ] )
+
+          // Include the bubbles
+          var bubblesArray = [],
+              orig_row = {};
+          for(i = 0; i < dataB.length; i++) {
+            orig_row = dataB[i]
+            var new_row = {}
+            new_row["cat"] = orig_row["A_P"]
+            new_row["X"] = parseFloat(orig_row["Canarias-Cargadas"])
+            new_row["Y"] = parseFloat(orig_row["Canarias-Descargadas"])
+            new_row["R"] = parseFloat(orig_row["Canarias-Tránsito"])
+            bubblesArray.push(new_row)
+          }
+          console.log(bubblesArray)
+
+          svgB.append('g')
+              .selectAll("dot")
+              .data(bubblesArray)
+              .enter()
+              .append("circle")
+                .attr("cx", function (d) { return xB(d.X); } )
+                .attr("cy", function (d) { return yB(d.Y); } )
+                .attr("r", function (d) { return r(d.R); } )
+                .style("fill", function (d) { return colorB(d.cat); } )
+                .style("opacity", "0.7")
+                .attr("stroke", "white")
+                .style("stroke-width", "2px")
+
+          // Draw legend
+          drawLegend(svgB, catvalsB, colorB);
+
+      })
+
+    </script>
+
+    <script id="sankeyChart" type="text/javascript">
+
+      // Insert the SVG element into the DOM
+      var svgK = iniSVG("#sankey_div");
+
+      // Format variables
+      var units = "Tons",
+          formatNumber = d3.format(",.0f"),    // zero decimal places
+          format = function(d) { return formatNumber(d) + " " + units; },
+          color = d3.scaleOrdinal(d3.schemeCategory10);
+
+      //set up graph in same style as original example but empty
+      var graph = { "nodes" : [], "links" : [] };
+
+      // Set the sankey diagram properties
+      var sankey = d3.sankey()
+          .nodeWidth(15)
+          .nodePadding(10)
+          .size([plotWidth, plotHeight]);
+
+      var path = sankey.link();
+
+      // Get the data
+      //d3.csv("https://raw.githubusercontent.com/guanchgonzalez/MU_CID_3B_Vis/main/mercancias_3.csv",
+      d3.csv("https://raw.githubusercontent.com/guanchgonzalez/MU_CID_3B_Vis/main/sankey.csv",
+        function (dataK) {
+
+          dataK.forEach( function (d) {
+            graph.nodes.push({ "name": d.Origen });
+            graph.nodes.push({ "name": d.Destino });
+            graph.links.push({ "source": d.Origen,
+                               "target": d.Destino,
+                               "value": +d.Toneladas });
+          });
+          console.log(graph);
+
+          // return only the distinct / unique nodes
+          graph.nodes = d3.keys( d3.nest()
+                                    .key( function (d) { return d.name; })
+                                    .object(graph.nodes));
+
+          // loop through each link replacing the text with its index from node
+          graph.links.forEach(function (d, i) {
+            graph.links[i].source = graph.nodes.indexOf(graph.links[i].source);
+            graph.links[i].target = graph.nodes.indexOf(graph.links[i].target);
+          });
+
+          // now loop through each nodes to make nodes an array of objects
+          // rather than an array of strings
+          graph.nodes.forEach(function (d, i) {
+            graph.nodes[i] = { "name": d };
+          });
+          console.log(graph);
+
+          sankey
+            .nodes(graph.nodes)
+            .links(graph.links)
+            .layout(4);
+          console.log(graph);
+
+          // add in the links
+          var link = svgK.append("g")
+                          .selectAll(".link")
+                          .data(graph.links)
+                          .enter().append("path")
+                            .attr("class", "link")
+                            .attr("d", path)
+                            .style("stroke-width", function(d) {
+                              return Math.max(1, d.dy); })
+                            .sort(function(a, b) { return b.dy - a.dy; });
+
+          // add the link titles
+          link.append("title")
+              .text(function(d) {
+          		  return d.source.name + " → " +
+                       d.target.name + "\n" + format(d.value);
+              });
+
+          // add in the nodes
+          var node = svgK.append("g")
+                          .selectAll(".node")
+                          .data(graph.nodes)
+                          .enter()
+                          .append("g")
+                            .attr("class", "node")
+                            .attr("transform", function(d) {
+                  		        return "translate(" + d.x + "," + d.y + ")"; })
+                            .call(d3.drag()
+                            .subject(function(d) { return d; })
+                            .on("start", function() {
+                              this.parentNode.appendChild(this); })
+                            .on("drag", dragmove));
+
+          // add the rectangles for the nodes
+          node.append("rect")
+              .attr("height", function(d) { return d.dy; })
+              .attr("width", sankey.nodeWidth())
+              .style("fill", function(d) {
+        		    return d.color = color(d.name.replace(/ .*/, "")); })
+              .style("stroke", function(d) {
+        		    return d3.rgb(d.color).darker(2); })
+              .append("title")
+              .text(function(d) {
+        		    return d.name + "\n" + format(d.value); });
+
+          // add in the title for the nodes
+          node.append("text")
+                .attr("x", -6)
+                .attr("y", function(d) { return d.dy / 2; })
+                .attr("dy", ".35em")
+                .attr("text-anchor", "end")
+                .attr("transform", null)
+                .text(function(d) { return d.name; })
+                .filter(function(d) { return d.x < plotWidth / 2; })
+                .attr("x", 6 + sankey.nodeWidth())
+                .attr("text-anchor", "start");
+
+          // the function for moving the nodes
+          function dragmove(d) {
+            d3.select(this)
+              .attr("transform",
+                    "translate("
+                     + d.x + ","
+                     + (d.y = Math.max(0, Math.min(height - d.dy, d3.event.y)))
+                     + ")");
+            sankey.relayout();
+            link.attr("d", path);
+          }
+      })
+
+    </script>
+
+  </body>
+
+</html>
