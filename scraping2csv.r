@@ -150,7 +150,7 @@ rm(sel_3_mercancias)
 str(mercancias_3)
 mercancias_3[1:20,]
 mercancias_3_TFE <- mercancias_3 %>% filter(Origen %in% c("Granadilla", "Los Cristianos", "Santa Cruz de Tenerife") & Origen != Destino)
-mercancias_3_TFE[1:20,]
+mercancias_3_TFE
 
 
 # Export to CSV
