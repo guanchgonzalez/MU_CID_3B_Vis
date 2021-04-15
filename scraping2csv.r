@@ -148,7 +148,9 @@ mercancias_3 <- sel_3_mercancias %>%
           Toneladas = Sumatorio)
 rm(sel_3_mercancias)
 str(mercancias_3)
-mercancias_3[]
+mercancias_3[1:20,]
+mercancias_3_TFE <- mercancias_3 %>% filter(Origen %in% c("Granadilla", "Los Cristianos", "Santa Cruz de Tenerife") & Origen != Destino)
+mercancias_3_TFE[1:20,]
 
 
 # Export to CSV
@@ -157,6 +159,8 @@ write.csv(mercancias_1, "../../MU_CID_3B_Vis/mercancias_1.csv", row.names = FALS
 write.csv(mercancias_1_SPC, "../../MU_CID_3B_Vis/mercancias_1_SPC.csv", row.names = FALSE)
 write.csv(mercancias_2, "../../MU_CID_3B_Vis/mercancias_2.csv", row.names = FALSE)
 write.csv(mercancias_3, "../../MU_CID_3B_Vis/mercancias_3.csv", row.names = FALSE)
+write.csv(mercancias_3_TFE, "../../MU_CID_3B_Vis/mercancias_3_TFE.csv", row.names = FALSE)
+
 
 # Remove the dataframe objects
 
@@ -165,6 +169,7 @@ rm(mercancias_1)
 rm(mercancias_1_SPC)
 rm(mercancias_2)
 rm(mercancias_3)
+rm(mercancias_3_TFE)
 
 
 # Log into G Drive and upload the CSV file
