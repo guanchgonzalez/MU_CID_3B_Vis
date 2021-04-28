@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>Vis Práctica Mapas D3</title>
+    <style media="screen">
+      * {
+        margin: 0%;
+        border: 0%;
+      }
+      body {
+        font-family: Arial, Helvetica, Verdana, "Latin Modern Sans", sans-serif;
+      }
+      header {
+        padding: 0%;
+        background-color: #f1f1f1;
+        text-align: center;
+      }
+      h1 {
+        padding: 15px;
+      }
+      h2 {
+        padding: 10px;
+      }
+      li {
+        padding: 10px;
+        font-size: 1.4em;
+      }
+      .plot-title {
+        padding: 10px;
+        font-size: 1em;
+        text-align: center;
+        font-style: italic;
+      }
+      .axis-labels {
+        padding: .1em;
+        font-size: .9em;
+        color: "#000000";
+      }
+      .legend-labels {
+        padding: .1em;
+        font-size: .6em;
+      }
+      .svg-container {
+        display: inline-block;
+        position: relative;
+        width: 100%;
+        height: auto;
+        padding-bottom: 80%;
+        vertical-align: top;
+        overflow: hidden;
+      }
+      .svg-content {
+        display: inline-block;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      .node rect {
+        cursor: move;
+        fill-opacity: .9;
+        shape-rendering: crispEdges;
+      }
+      .node text {
+        pointer-events: none;
+        text-shadow: 0 1px 0 #fff;
+      }
+      .div tooltip {
+        position: absolute;
+        text-align: center;
+        width: 60px;
+        height: auto;
+        padding: 2px;
+        font: 12px sans-serif;
+        background: lightsteelblue;
+        border: 0px;
+        border-radius: 8px;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <script src="https://code.jquery.com/jquery-3.4.1.js"></script>
+    <script data-require="d3@4.0.0" data-semver="4.0.0" src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/d3-array.v1.min.js"></script>
+    <script src="https://d3js.org/d3-geo.v1.min.js"></script>
+    <script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+    <script src= "https://d3js.org/d3-color.v1.min.js"></script>
+    <script src= "https://d3js.org/d3-interpolate.v1.min.js"></script>
+    <script src= "https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
+    <script id="commonElements" type="text/javascript">
+
+      // Set the graph dimensions and margins
+      var margin = {top: 45, right: 190, bottom: 80, left: 80},
+          svgWidth = 1000,
+          svgHeight = 800,
+          plotWidth = svgWidth - margin.left - margin.right,
+          plotHeight = svgHeight - margin.top - margin.bottom;
+
+      // Format variables
+      var formatNumber = d3.format(",.3f");
+
+      // Insert the SVG element into the DOM
+      function iniSVG (insertionDiv) {
+        return d3.select(insertionDiv)
+                  .append("svg")
+                  .attr("preserveAspectRatio", "xMinYMin")
+                  .attr("viewBox", "0 0 " + svgWidth + " " + svgHeight)
+                  .classed("svg-content", true)
+                  .append("g")
+                    .attr("transform",
+                      "translate(" + margin.left + ", " + margin.top + ")");
+      }
+
+      // Function to get min value from a column in an array
+      function indMin (obJson, indicator) {
+        var min = Infinity
+        for(var i = 0; i < obJson.features.length; i++) {
+          var val = obJson.features[i].properties[indicator]
+          val = formatNumber(val.replace(",","."))
+          if (parseFloat(val) < min) {
+            min = parseFloat(val);
+          }
+        }
+        return min;
+      }
+
+      // Function to get max value from a column in an array
+      function indMax (obJson, indicator) {
+        var max = 0
+        for(var i = 0; i < obJson.features.length; i++) {
+          var val = obJson.features[i].properties[indicator]
+          val = formatNumber(val.replace(",","."))
+          if (parseFloat(val) > max) {
+            max = parseFloat(val);
+          }
+        }
+        return max;
+      }
+
+      // Function to draw the legend
+      function drawLegend(svgname, labelsVec, colorScale) {
+        var sqSize = 20,
+            yStartLegend = (plotHeight - labelsVec.length * (sqSize + 5)) / 2;
+
+        svgname.append("g")
+                .selectAll("squareColors")
+                .data(labelsVec.reverse())
+                .enter()
+                .append("rect")
+                  .attr("x", plotWidth + sqSize)
+                  .attr("y", function(d, i) {
+                    return yStartLegend + i * (sqSize + 5) })
+                  .attr("width", sqSize)
+                  .attr("height", sqSize)
+                  .style("fill", function (d) { return colorScale(d) });
+
+        svgname.append("g")
+                .selectAll("squareLabels")
+                .data(labelsVec)
+                .enter()
+                .append("text")
+                  .attr("x", plotWidth + 2.5 * sqSize)
+                  .attr("y", function (d, i) {
+                    return yStartLegend + i * (sqSize + 5) + (sqSize / 2) })
+                  .style("fill", function (d) { return colorScale(d) })
+                  .classed("legend-labels", true)
+                  .text(function (d) { return d })
+                  .attr("text-anchor", "left")
+                  .attr("alignment-baseline", "middle");
+      }
+
+    </script>
+
+    <script id="geoMapChart" type="text/javascript">
+
+      // Insert the SVG element into the DOM
+      var svgM = iniSVG("#geomap_div");
+
+      // Div object for the floating tag
+      var div = d3.select("body").append("div")
+                  .attr("class", "tooltip")
+                  .style("opacity", 0);
+
+      d3.json("https://raw.githubusercontent.com/guanchgonzalez/MU_CID_3B_Vis/main/indicadores_poblacion_municipios.geojson",
+        function (objectmap) {
+
+          //minpc0_14 = indMin(objectmap , "indicadores_municipal_TOTAL_d");
+          //maxpc0_14 = indMax(objectmap , "indicadores_municipal_TOTAL_d");
+          //console.log("Min: " + minpc0_14 + ", Max: " + maxpc0_14);
+
+          // Format variables
+          var scale = 1,
+              propvalues = {};
+
+          // Get the property selected into the DOM
+          function getProp (selectedProp) {
+
+            // Local variables
+            var output = {};
+
+            // Define local variables by the selected property
+            switch (selectedProp) {
+              case "density":
+                output['mainColor'] = "Greys";
+                output['indic'] = "indicadores_municipal_TOTAL_d";
+                break;
+              case "00a14":
+                output['mainColor'] = "Greens";
+                output['indic'] = "indicadores_municipal_PC_00a14";
+                break;
+              case "15a64":
+                output['mainColor'] = "Blues";
+                output['indic'] = "indicadores_municipal_PC_15a64";
+                break;
+              case "65mas":
+                output['mainColor'] = "Oranges";
+                output['indic'] = "indicadores_municipal_PC_65mas";
+                break;
+              case "PC_Nac_Can":
+                output['mainColor'] = "YlOrBr";
+                output['indic'] = "indicadores_municipal_PC_Nac_Canarias";
+                break;
+              case "PC_Nac_ES_XCan":
+                output['mainColor'] = "Purples";
+                output['indic'] = "indicadores_municipal_PC_Nac_ES_XCanarias";
+                break;
+              case "PC_Nac_Extr":
+                output['mainColor'] = "Reds";
+                output['indic'] = "indicadores_municipal_PC_Nac_Extranjero";
+                break;
+              default:
+                output['mainColor'] = "Greys";
+                output['indic'] = "indicadores_municipal_TOTAL_d";
+                break;
+            }
+
+            console.log("output: " + output['mainColor'] + " ,  " + output['indic']);
+            return output;
+          }
+
+          // Mercator projection
+          var projection = d3.geoMercator()
+                              .center([-15.749, 28.536])
+                              .scale(scale)
+
+          // Fit projection to the plot area
+          projection.fitSize([plotWidth, plotHeight], objectmap)
+
+          // Get the paths (boundaries of the municipalities) over the projection
+          var path = d3.geoPath()
+                        .projection(projection)
+
+          // Generate the graticule
+          var graticule = d3.geoGraticule()
+
+          // Insert the graticule into the svg
+          svgM.append("path")
+              .datum(graticule)
+              .attr("class", "graticule")
+              .attr("d", path)
+
+          // Add the data paths (polygons) from the geoJSON object
+          var u = svgM.selectAll("path")
+                      .data(objectmap.features)
+
+          // Insert the properties values from the geoJSON object
+          propvalues = getProp("density");
+
+          // Format variables
+          var value,
+              minD = indMin(objectmap , propvalues['indic']),
+              maxD = indMax(objectmap , propvalues['indic']),
+              step = formatNumber( ( maxD - minD ) / 10 );
+          console.log("Domain: " + minD + " ,  " + maxD + " ,  " + step);
+          var colorInd = d3.scaleThreshold()
+                            .domain(d3.range(minD, maxD, step))
+                            .range(d3[`scheme${propvalues['mainColor']}`]);
+
+          // Create the choropleths by the selected property
+          u.enter()
+            .append("path")
+            .attr("d", path)
+            .attr("fill", function (d) {
+              value = d.properties[propvalues['indic']]
+              console.log(value);
+              value = formatNumber(value.replace(",","."))
+              value = parseFloat(value)
+              return colorInd(value);
+            })
+
+      })
+
+    </script>
+
+    <header id="site-header" role="banner">
+      <h1>Visualización 2021 - Visualizaciones Avanzadas</h1>
+      <h2>Práctica de mapas en D3.js</h2>
+    </header>
+
+    <main id="site-content" role="main">
+
+      <div>
+        <p class="plot-title">
+          Padrón municipal Canarias Grid 250m
+        </p>
+        <div id="geomap_div" class="svg-container"></div>
+      </div>
+    </main>
+
+  </body>
+
+</html>
