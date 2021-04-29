@@ -23,20 +23,29 @@
       h2 {
         padding: 10px;
       }
-      li {
-        padding: 10px;
-        font-size: 1.4em;
-      }
       .plot-title {
         padding: 10px;
         font-size: 1em;
         text-align: center;
         font-style: italic;
       }
-      .axis-labels {
-        padding: .1em;
-        font-size: .9em;
-        color: "#000000";
+      .button-container {
+        margin: 10px 20px;
+      }
+      .button {
+        border: none;
+        padding: 10px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+        border-radius: 8px;
+      }
+      .btnw {
+        color: white;
+      }
+      .btnb {
+        color: black;
       }
       .legend-labels {
         padding: .1em;
@@ -66,13 +75,14 @@
         pointer-events: none;
         text-shadow: 0 1px 0 #fff;
       }
-      .div tooltip {
-        position: absolute;
+      div.tooltip {
+        position: relative;
         text-align: center;
-        width: 60px;
+        width: 7em;
         height: auto;
         padding: 2px;
-        font: 12px sans-serif;
+        font: sans-serif;
+        font-size: .8em;
         background: lightsteelblue;
         border: 0px;
         border-radius: 8px;
@@ -83,6 +93,37 @@
 
   <body>
 
+    <header id="site-header" role="banner">
+      <h1>Visualización 2021 - Visualizaciones Avanzadas</h1>
+      <h2>Práctica de mapas en D3.js</h2>
+    </header>
+
+    <main id="site-content" role="main">
+
+      <div>
+        <p class="plot-title">
+          Padrón municipal Canarias Grid 250m
+        </p>
+        <div class="button-container">
+          <button class="button btnw" style="background-color:grey"
+                  onclick=getProp("density")>Densidad (habs/Ha2)</button>
+          <button class="button btnw" style="background-color:green"
+                  onclick=getProp("00a14")>% 0-14 años</button>
+          <button class="button btnw" style="background-color:blue"
+                  onclick=getProp("15a64")>% 15-64 años</button>
+          <button class="button btnw" style="background-color:orange"
+                  onclick=getProp("65mas")>% 65 o más años</button>
+          <button class="button btnb" style="background-color:yellow"
+                  onclick=getProp("PC_Nac_Can")>% canarios</button>
+          <button class="button btnw" style="background-color:purple"
+                  onclick=getProp("PC_Nac_ES_XCan")>% peninsulares</button>
+          <button class="button btnw" style="background-color:red"
+                  onclick=getProp("PC_Nac_Extr")>% extranjeros</button>
+        </div>
+        <div id="geomap_div" class="svg-container"></div>
+      </div>
+    </main>
+
     <script src="https://code.jquery.com/jquery-3.4.1.js"></script>
     <script data-require="d3@4.0.0" data-semver="4.0.0" src="https://d3js.org/d3.v4.min.js"></script>
     <script src="https://d3js.org/d3-array.v1.min.js"></script>
@@ -92,10 +133,10 @@
     <script src= "https://d3js.org/d3-interpolate.v1.min.js"></script>
     <script src= "https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
 
-    <script id="commonElements" type="text/javascript">
+    <script id="geoMapChart" type="text/javascript">
 
       // Set the graph dimensions and margins
-      var margin = {top: 45, right: 190, bottom: 80, left: 80},
+      var margin = {top: 10, right: 190, bottom: 10, left: 10},
           svgWidth = 1000,
           svgHeight = 800,
           plotWidth = svgWidth - margin.left - margin.right,
@@ -116,7 +157,51 @@
                       "translate(" + margin.left + ", " + margin.top + ")");
       }
 
-      // Function to get min value from a column in an array
+      // Get the property selected into the DOM
+      function getProp (selectedProp) {
+
+        var output = {};
+
+        switch (selectedProp) {
+          case "density":
+            output['mainColor'] = "Greys";
+            output['indic'] = "indicadores_municipal_TOTAL_d";
+            break;
+          case "00a14":
+            output['mainColor'] = "Greens";
+            output['indic'] = "indicadores_municipal_PC_00a14";
+            break;
+          case "15a64":
+            output['mainColor'] = "Blues";
+            output['indic'] = "indicadores_municipal_PC_15a64";
+            break;
+          case "65mas":
+            output['mainColor'] = "Oranges";
+            output['indic'] = "indicadores_municipal_PC_65mas";
+            break;
+          case "PC_Nac_Can":
+            output['mainColor'] = "YlOrBr";
+            output['indic'] = "indicadores_municipal_PC_Nac_Canarias";
+            break;
+          case "PC_Nac_ES_XCan":
+            output['mainColor'] = "Purples";
+            output['indic'] = "indicadores_municipal_PC_Nac_ES_XCanarias";
+            break;
+          case "PC_Nac_Extr":
+            output['mainColor'] = "Reds";
+            output['indic'] = "indicadores_municipal_PC_Nac_Extranjero";
+            break;
+          default:
+            output['mainColor'] = "Greys";
+            output['indic'] = "indicadores_municipal_TOTAL_d";
+            break;
+        }
+
+        console.log("output: " + output['mainColor'] + " ,  " + output['indic']);
+        return output;
+      }
+
+      // Function to get min value from a property values list
       function indMin (obJson, indicator) {
         var min = Infinity
         for(var i = 0; i < obJson.features.length; i++) {
@@ -129,7 +214,7 @@
         return min;
       }
 
-      // Function to get max value from a column in an array
+      // Function to get max value from a property values list
       function indMax (obJson, indicator) {
         var max = 0
         for(var i = 0; i < obJson.features.length; i++) {
@@ -174,74 +259,35 @@
                   .attr("alignment-baseline", "middle");
       }
 
-    </script>
-
-    <script id="geoMapChart" type="text/javascript">
-
       // Insert the SVG element into the DOM
       var svgM = iniSVG("#geomap_div");
 
       // Div object for the floating tag
-      var div = d3.select("body").append("div")
-                  .attr("class", "tooltip")
-                  .style("opacity", 0);
+      var divM = d3.select("#geomap_div")
+                    .append("div")
+                    .attr("class", "tooltip")
+                    .style("opacity", 0);
 
-      d3.json("https://raw.githubusercontent.com/guanchgonzalez/MU_CID_3B_Vis/main/indicadores_poblacion_municipios.geojson",
+      // Apply a zoom on the SVG element
+      function zoomed() {
+        svgM.selectAll("path")
+            .attr('transform', d3.event.transform);
+      }
+
+      // Scale the zoom
+      const zoom = d3.zoom()
+                      .scaleExtent([1, 8])
+                      .on('zoom', zoomed);
+
+      // Call the zoom
+      svgM.call(zoom);
+
+      d3.json("https://raw.githubusercontent.com/guanchgonzalez/MU_CID_3B_Vis/main/indicadores_poblacion_municipios-v2.geojson",
         function (objectmap) {
 
-          //minpc0_14 = indMin(objectmap , "indicadores_municipal_TOTAL_d");
-          //maxpc0_14 = indMax(objectmap , "indicadores_municipal_TOTAL_d");
-          //console.log("Min: " + minpc0_14 + ", Max: " + maxpc0_14);
-
-          // Format variables
+          // Local variables
           var scale = 1,
               propvalues = {};
-
-          // Get the property selected into the DOM
-          function getProp (selectedProp) {
-
-            // Local variables
-            var output = {};
-
-            // Define local variables by the selected property
-            switch (selectedProp) {
-              case "density":
-                output['mainColor'] = "Greys";
-                output['indic'] = "indicadores_municipal_TOTAL_d";
-                break;
-              case "00a14":
-                output['mainColor'] = "Greens";
-                output['indic'] = "indicadores_municipal_PC_00a14";
-                break;
-              case "15a64":
-                output['mainColor'] = "Blues";
-                output['indic'] = "indicadores_municipal_PC_15a64";
-                break;
-              case "65mas":
-                output['mainColor'] = "Oranges";
-                output['indic'] = "indicadores_municipal_PC_65mas";
-                break;
-              case "PC_Nac_Can":
-                output['mainColor'] = "YlOrBr";
-                output['indic'] = "indicadores_municipal_PC_Nac_Canarias";
-                break;
-              case "PC_Nac_ES_XCan":
-                output['mainColor'] = "Purples";
-                output['indic'] = "indicadores_municipal_PC_Nac_ES_XCanarias";
-                break;
-              case "PC_Nac_Extr":
-                output['mainColor'] = "Reds";
-                output['indic'] = "indicadores_municipal_PC_Nac_Extranjero";
-                break;
-              default:
-                output['mainColor'] = "Greys";
-                output['indic'] = "indicadores_municipal_TOTAL_d";
-                break;
-            }
-
-            console.log("output: " + output['mainColor'] + " ,  " + output['indic']);
-            return output;
-          }
 
           // Mercator projection
           var projection = d3.geoMercator()
@@ -272,14 +318,16 @@
           propvalues = getProp("density");
 
           // Format variables
-          var value,
+          var value, previous_color,
               minD = indMin(objectmap , propvalues['indic']),
               maxD = indMax(objectmap , propvalues['indic']),
               step = formatNumber( ( maxD - minD ) / 10 );
-          console.log("Domain: " + minD + " ,  " + maxD + " ,  " + step);
-          var colorInd = d3.scaleThreshold()
+              color_range = d3[`scheme${propvalues['mainColor']}`],
+              colorInd = d3.scaleThreshold()
                             .domain(d3.range(minD, maxD, step))
-                            .range(d3[`scheme${propvalues['mainColor']}`]);
+                            .range(color_range[9]);
+          console.log("Domain: " + minD + " ,  " + maxD + " ,  " + step);
+          console.log(color_range[9]);
 
           // Create the choropleths by the selected property
           u.enter()
@@ -292,25 +340,38 @@
               value = parseFloat(value)
               return colorInd(value);
             })
+            .on("mouseover", function (d) {
+                divM.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+                divM.html(d.properties.label + "<br>" +
+                          d.properties.indicadores_municipal_TOTAL + " habs.")
+                    .style("left", (d3.mouse(this)[0]) + "px")
+                    .style("top", (d3.mouse(this)[1]) + "px");
+                d3.select(this)
+                  .style("stroke", "DarkRed")
+                  .style("stroke-width", "1.2px")
+                  .style("fill", "Gold");
+                previous_color = d3.select(this)
+                                    .attr("fill");
+            })
+            .on("mouseout", function(d) {
+                divM.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+                d3.select(this)
+                  .style("stroke", "white")
+                  .style("stroke-width", ".1px")
+                  .style("fill", previous_color);
+            })
+            .on("click", function (d) {
+                console.log(d.properties.label + ": " +
+                            d.properties.indicadores_municipal_TOTAL + " habs.");
+            })
 
       })
 
     </script>
-
-    <header id="site-header" role="banner">
-      <h1>Visualización 2021 - Visualizaciones Avanzadas</h1>
-      <h2>Práctica de mapas en D3.js</h2>
-    </header>
-
-    <main id="site-content" role="main">
-
-      <div>
-        <p class="plot-title">
-          Padrón municipal Canarias Grid 250m
-        </p>
-        <div id="geomap_div" class="svg-container"></div>
-      </div>
-    </main>
 
   </body>
 
