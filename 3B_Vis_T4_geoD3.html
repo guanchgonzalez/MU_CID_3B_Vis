@@ -66,15 +66,6 @@
         top: 0;
         left: 0;
       }
-      .node rect {
-        cursor: move;
-        fill-opacity: .9;
-        shape-rendering: crispEdges;
-      }
-      .node text {
-        pointer-events: none;
-        text-shadow: 0 1px 0 #fff;
-      }
       div.tooltip {
         position: relative;
         text-align: center;
@@ -87,6 +78,15 @@
         border: 0px;
         border-radius: 8px;
         pointer-events: none;
+      }
+      .legend-title {
+        font: Verdana;
+        font-size: 1.1em;
+        font-weight: bold;
+      }
+      .details-legend {
+        font-size: .9em;
+        vertical-align: middle;
       }
     </style>
   </head>
@@ -137,15 +137,16 @@
     <script id="geoMapChart" type="text/javascript">
 
       // Set the graph dimensions and margins
-      let margin = {top: 10, right: 140, bottom: 10, left: 10},
+      let margin = {top: 0, right: 140, bottom: 100, left: 10},
           svgWidth = 1000,
-          svgHeight = 400,
+          svgHeight = 500,
           plotWidth = svgWidth - margin.left - margin.right,
           plotHeight = svgHeight - margin.top - margin.bottom;
 
       // Format variables
-      let formatNumber1 = d3.format(",.1f");
-          formatNumber3 = d3.format(",.3f");
+      let formatNumber1 = d3.format(".1f"),
+          formatNumber3 = d3.format(".3f"),
+          formatNumberM = d3.format(",d");
 
       // Insert the SVG element into the DOM
       function iniSVG (insertionDiv) {
@@ -164,9 +165,10 @@
         let min = Infinity
         for(let i = 0; i < obJson.features.length; i++) {
           let val = obJson.features[i].properties[indicator]
-          val = formatNumber3(val.replace(",","."))
-          if (parseFloat(val) < min) {
-            min = parseFloat(val);
+          val = val.replace(".","").replace(",",".")
+          val = parseFloat(formatNumber3(val))
+          if (val < min) {
+            min = val;
           }
         }
         return min;
@@ -177,12 +179,94 @@
         let max = 0
         for(let i = 0; i < obJson.features.length; i++) {
           let val = obJson.features[i].properties[indicator]
-          val = formatNumber3(val.replace(",","."))
-          if (parseFloat(val) > max) {
-            max = parseFloat(val);
+          val = val.replace(".","").replace(",",".")
+          val = parseFloat(formatNumber3(val))
+          if (val > max) {
+            max = val;
           }
         }
         return max;
+      }
+
+      // Function to get the island
+      function isla (cuid) {
+        let isla = "Tenerife"
+        switch (cuid) {
+          case "ES703":
+            isla = "El Hierro"
+            break;
+          case "ES704":
+            isla = "Fuerteventura"
+            break;
+          case "ES705":
+            isla = "Gran Canaria"
+            break;
+          case "ES706":
+            isla = "La Gomera"
+            break;
+          case "ES707":
+            isla = "La Palma"
+            break;
+          case "ES708":
+            isla = "Lanzarote"
+            break;
+          case "ES709":
+            isla = "Tenerife"
+            break;
+        }
+        return isla;
+      }
+
+      // Function to draw a column of three text rows
+      function textColumn (svgname, data, textX, textY, namesVec, indicVec) {
+        svgname.append("text")
+                .attr("x", textX)
+                .attr("y", textY)
+                .attr("width", "100px")
+                .attr("height", "20px")
+                .classed("details-legend", true)
+                .attr("text-align", "right")
+                .text(namesVec[0] + " : ");
+        svgname.append("text")
+                .attr("x", textX)
+                .attr("y", textY + 20)
+                .attr("width", "100px")
+                .attr("height", "20px")
+                .classed("details-legend", true)
+                .attr("text-align", "right")
+                .text(namesVec[1] + " : ");
+        svgname.append("text")
+                .attr("x", textX)
+                .attr("y", textY + 40)
+                .attr("width", "100px")
+                .attr("height", "20px")
+                .classed("details-legend", true)
+                .attr("text-align", "right")
+                .text(namesVec[2] + " : ");
+        svgname.append("text")
+                .attr("x", textX + 100)
+                .attr("y", textY)
+                .attr("width", "100px")
+                .attr("height", "20px")
+                .classed("details-legend", true)
+                .attr("text-align", "left")
+                .text(data[indicVec[0]]);
+        svgname.append("text")
+                .attr("x", textX + 100)
+                .attr("y", textY + 20)
+                .attr("width", "100px")
+                .attr("height", "20px")
+                .classed("details-legend", true)
+                .attr("text-align", "left")
+                .text(data[indicVec[1]]);
+        svgname.append("text")
+                .attr("x", textX + 100)
+                .attr("y", textY + 40)
+                .attr("width", "100px")
+                .attr("height", "20px")
+                .classed("details-legend", true)
+                .attr("text-align", "left")
+                .text(data[indicVec[2]]);
       }
 
       // First map loading
@@ -192,13 +276,27 @@
       function getProp (selectedProp) {
 
         // Global variables
-        let svgM, divM, mainColor, indic,
+        let svgM, divM, mainColor, indic, unit,
             scale, sqSize, projection, path, graticule, u,
-            value, previous_color, yStartLegend;
+            value, previous_color, yStartLeftLegend, yStartDownLegend;
+        let nCol1 = ["Población", "Hombres", "Mujeres"],
+            iCol1 = ["indicadores_municipal_TOTAL",
+                      "indicadores_municipal_Hombres",
+                      "indicadores_municipal_Mujeres"],
+            nCol2 = ["< 15 años", "15 - 64 años", "> 64 años"],
+            iCol2 = ["indicadores_municipal_00a14",
+                      "indicadores_municipal_15a64",
+                      "indicadores_municipal_65mas"],
+            nCol3 = ["Canarios", "Peninsulares", "Extranjeros"],
+            iCol3 = ["indicadores_municipal_Nac_Canarias",
+                      "indicadores_municipal_Nac_ES_XCanarias",
+                      "indicadores_municipal_Nac_Extranjero"];
         let url = "https://raw.githubusercontent.com/guanchgonzalez/MU_CID_3B_Vis/main/indicadores_poblacion_municipios-v2.geojson";
 
         // Clear the previous SVG objects
         d3.selectAll("g > *").remove();
+        d3.selectAll("svg").remove();
+        d3.selectAll(".tooltip").remove();
 
         // Insert the SVG element into the DOM
         svgM = iniSVG("#geomap_div");
@@ -228,34 +326,42 @@
           case "density":
             mainColor = "Greys";
             indic = "indicadores_municipal_TOTAL_d";
+            unit = " habs/Ha2";
             break;
           case "00a14":
             mainColor = "Greens";
             indic = "indicadores_municipal_PC_00a14";
+            unit = " %"
             break;
           case "15a64":
             mainColor = "Blues";
             indic = "indicadores_municipal_PC_15a64";
+            unit = " %"
             break;
           case "65mas":
             mainColor = "Oranges";
             indic = "indicadores_municipal_PC_65mas";
+            unit = " %"
             break;
           case "PC_Nac_Can":
             mainColor = "YlOrBr";
             indic = "indicadores_municipal_PC_Nac_Canarias";
+            unit = " %"
             break;
           case "PC_Nac_ES_XCan":
             mainColor = "Purples";
             indic = "indicadores_municipal_PC_Nac_ES_XCanarias";
+            unit = " %"
             break;
           case "PC_Nac_Extr":
             mainColor = "Reds";
             indic = "indicadores_municipal_PC_Nac_Extranjero";
+            unit = " %"
             break;
           default:
             mainColor = "Greys";
             indic = "indicadores_municipal_TOTAL_d";
+            unit = " %"
             break;
         }
         console.log("selected: " + mainColor + " ,  " + indic)
@@ -295,22 +401,22 @@
           // Format variables
           let minD = indMin(objectmap , indic),
               maxD = indMax(objectmap , indic),
-              step = formatNumber3( ( maxD - minD ) / 9 ),
+              step = parseFloat(formatNumber3(( maxD - minD ) / 9 )),
               color_range = d3[`scheme${mainColor}`],
               colorInd = d3.scaleThreshold()
                             .domain(d3.range(minD, maxD, step))
                             .range(color_range[9]);
           console.log("Domain: " + minD + " ,  " + maxD + " ,  " + step);
           console.log(color_range[9]);
-          let inf = formatNumber1(minD),
+          let inf = formatNumber1(minD).replace(".",","),
               sup = [],
               labelsVec = [];
           for (let i = 1; i < 9; i++) {
-            sup.push(formatNumber1(minD + (i * step)))
+            sup.push(formatNumber1(minD + (i * step)).replace(".",","))
             labelsVec.push(inf + " - " + sup.slice(-1))
             inf = sup.slice(-1)
           }
-          labelsVec.push(inf + " - " + formatNumber1(maxD));
+          labelsVec.push(inf + " - " + formatNumber1(maxD).replace(".",","));
           console.log(labelsVec);
 
           // Create the choropleths by the selected property
@@ -319,9 +425,9 @@
             .attr("d", path)
             .attr("fill", function (d) {
               value = d.properties[indic]
+              value = value.replace(".","").replace(",",".")
+              value = parseFloat(formatNumber3(value))
               console.log(value)
-              value = formatNumber3(value.replace(",","."))
-              value = parseFloat(value)
               return colorInd(value);
             })
             .on("mouseover", function (d) {
@@ -329,7 +435,8 @@
                     .duration(200)
                     .style("opacity", .7);
                 divM.html(d.properties.label + "<br>" +
-                          d.properties.indicadores_municipal_TOTAL + " habs.")
+                          formatNumberM(iCol1[0]).replace(",",".") +
+                          " habs.")
                     .style("left", (d3.mouse(this)[0]) + "px")
                     .style("top", (d3.mouse(this)[1]) + "px");
                 d3.select(this)
@@ -350,12 +457,39 @@
             })
             .on("click", function (d) {
                 console.log(d.properties.label + ": " +
-                            d.properties.indicadores_municipal_TOTAL + " habs.");
+                            d.properties[indic] + unit)
+                svgM.selectAll("text.legend-title").remove()
+                svgM.selectAll("text.details-legend").remove()
+                svgM.append("text")
+                    .attr("x", 10)
+                    .attr("y", plotHeight + 10)
+                    .attr("width", "20em")
+                    .attr("height", "30px")
+                    .attr("text-anchor", "left")
+                    .attr("alignment-baseline", "middle")
+                    .classed("legend-title", true)
+                    .text(d.properties.label + " - (" +
+                          isla(d.properties.indicadores_municipal_CUISLA) + ")")
+                textColumn(svgM, d.properties, 10, (plotHeight+40), nCol1, iCol1)
+                textColumn(svgM, d.properties, 210, (plotHeight+40), nCol2, iCol2)
+                textColumn(svgM, d.properties, 410, (plotHeight+40), nCol3, iCol3);
             })
 
-            // Drawing the legend
-            yStartLegend = (plotHeight - (labelsVec.length - 1) * (sqSize + 5)) / 2;
+            // First Y position to draw the left legend
+            yStartLeftLegend = (plotHeight - (labelsVec.length - 1) * (sqSize + 5)) / 2;
 
+            // Left legend title (units)
+            svgM.append("text")
+                .attr("x", plotWidth + 3 * sqSize)
+                .attr("y", yStartLeftLegend - sqSize)
+                .attr("width", "6em")
+                .attr("height", "1em")
+                .attr("text-anchor", "middle")
+                .attr("alignment-baseline", "middle")
+                .style("font-size", ".9em")
+                .text(unit);
+
+            // Left legend color squares
             svgM.append("g")
                 .selectAll("squareColors")
                 .data(labelsVec.reverse())
@@ -363,12 +497,13 @@
                 .append("rect")
                   .attr("x", plotWidth + sqSize)
                   .attr("y", function(d, i) {
-                    return yStartLegend + i * (sqSize + 5) })
+                    return yStartLeftLegend + i * (sqSize + 5) })
                   .attr("width", sqSize)
                   .attr("height", sqSize)
                   .style("fill", function (d, i) { return color_range[9][i] })
                   .style("stroke", "black");
 
+            // Left legend texts
             svgM.append("g")
                 .selectAll("squareLabels")
                 .data(labelsVec.reverse())
@@ -376,8 +511,7 @@
                 .append("text")
                   .attr("x", plotWidth + 2.5 * sqSize)
                   .attr("y", function (d, i) {
-                    return yStartLegend + i * (sqSize + 5) + (sqSize / 2) })
-                  //.style("fill", function (d, i) { return color_range[9][i] })
+                    return yStartLeftLegend + i * (sqSize + 5) + (sqSize / 2) })
                   .classed("legend-labels", true)
                   .text(function (d) { return d })
                   .attr("text-anchor", "left")
