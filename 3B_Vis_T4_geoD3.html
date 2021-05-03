@@ -87,6 +87,15 @@
       .details-legend {
         font-size: .9em;
         vertical-align: middle;
+        padding: 0px 0px 0px 10px;
+      }
+      .selected-data {
+        font: Helvetica;
+        font-size: 1.7em;
+        text-align: center;
+        vertical-align: middle;
+        height: 90px;
+        padding: 20px;
       }
     </style>
   </head>
@@ -218,55 +227,23 @@
       }
 
       // Function to draw a column of three text rows
-      function textColumn (svgname, data, textX, textY, namesVec, indicVec) {
+      function textData (svgname, data, textX, textY, name, indic) {
         svgname.append("text")
                 .attr("x", textX)
                 .attr("y", textY)
-                .attr("width", "100px")
-                .attr("height", "20px")
+                .attr("width", 100)
+                .attr("height", 20)
                 .classed("details-legend", true)
                 .attr("text-align", "right")
-                .text(namesVec[0] + " : ");
-        svgname.append("text")
-                .attr("x", textX)
-                .attr("y", textY + 20)
-                .attr("width", "100px")
-                .attr("height", "20px")
-                .classed("details-legend", true)
-                .attr("text-align", "right")
-                .text(namesVec[1] + " : ");
-        svgname.append("text")
-                .attr("x", textX)
-                .attr("y", textY + 40)
-                .attr("width", "100px")
-                .attr("height", "20px")
-                .classed("details-legend", true)
-                .attr("text-align", "right")
-                .text(namesVec[2] + " : ");
+                .text(name + " : ");
         svgname.append("text")
                 .attr("x", textX + 100)
                 .attr("y", textY)
-                .attr("width", "100px")
-                .attr("height", "20px")
+                .attr("width", 70)
+                .attr("height", 20)
                 .classed("details-legend", true)
                 .attr("text-align", "left")
-                .text(data[indicVec[0]]);
-        svgname.append("text")
-                .attr("x", textX + 100)
-                .attr("y", textY + 20)
-                .attr("width", "100px")
-                .attr("height", "20px")
-                .classed("details-legend", true)
-                .attr("text-align", "left")
-                .text(data[indicVec[1]]);
-        svgname.append("text")
-                .attr("x", textX + 100)
-                .attr("y", textY + 40)
-                .attr("width", "100px")
-                .attr("height", "20px")
-                .classed("details-legend", true)
-                .attr("text-align", "left")
-                .text(data[indicVec[2]]);
+                .text(data[indic]);
       }
 
       // First map loading
@@ -276,21 +253,21 @@
       function getProp (selectedProp) {
 
         // Global variables
-        let svgM, divM, mainColor, indic, unit,
+        let svgM, divM, mainColor, indic, unit, name, textColor,
             scale, sqSize, projection, path, graticule, u,
             value, previous_color, yStartLeftLegend, yStartDownLegend;
-        let nCol1 = ["Población", "Hombres", "Mujeres"],
-            iCol1 = ["indicadores_municipal_TOTAL",
-                      "indicadores_municipal_Hombres",
-                      "indicadores_municipal_Mujeres"],
-            nCol2 = ["< 15 años", "15 - 64 años", "> 64 años"],
-            iCol2 = ["indicadores_municipal_00a14",
-                      "indicadores_municipal_15a64",
-                      "indicadores_municipal_65mas"],
-            nCol3 = ["Canarios", "Peninsulares", "Extranjeros"],
-            iCol3 = ["indicadores_municipal_Nac_Canarias",
-                      "indicadores_municipal_Nac_ES_XCanarias",
-                      "indicadores_municipal_Nac_Extranjero"];
+        let nVec = ["Población", "Hombres", "Mujeres",
+                    "< 15 años", "15 - 64 años", "> 64 años",
+                    "Canarios", "Peninsulares", "Extranjeros"];
+        let iVec = ["indicadores_municipal_TOTAL",
+                    "indicadores_municipal_Hombres",
+                    "indicadores_municipal_Mujeres",
+                    "indicadores_municipal_00a14",
+                    "indicadores_municipal_15a64",
+                    "indicadores_municipal_65mas",
+                    "indicadores_municipal_Nac_Canarias",
+                    "indicadores_municipal_Nac_ES_XCanarias",
+                    "indicadores_municipal_Nac_Extranjero"];
         let url = "https://raw.githubusercontent.com/guanchgonzalez/MU_CID_3B_Vis/main/indicadores_poblacion_municipios-v2.geojson";
 
         // Clear the previous SVG objects
@@ -324,44 +301,60 @@
         // Button selection
         switch (selectedProp) {
           case "density":
-            mainColor = "Greys";
-            indic = "indicadores_municipal_TOTAL_d";
-            unit = " habs/Ha2";
+            mainColor = "Greys"
+            indic = "indicadores_municipal_TOTAL_d"
+            unit = " habs/Ha2"
+            name = "Densidad"
+            textColor = "grey"
             break;
           case "00a14":
-            mainColor = "Greens";
-            indic = "indicadores_municipal_PC_00a14";
+            mainColor = "Greens"
+            indic = "indicadores_municipal_PC_00a14"
             unit = " %"
+            name = nVec[3]
+            textColor = "green"
             break;
           case "15a64":
-            mainColor = "Blues";
-            indic = "indicadores_municipal_PC_15a64";
+            mainColor = "Blues"
+            indic = "indicadores_municipal_PC_15a64"
             unit = " %"
+            name = nVec[4]
+            textColor = "blue"
             break;
           case "65mas":
-            mainColor = "Oranges";
-            indic = "indicadores_municipal_PC_65mas";
+            mainColor = "Oranges"
+            indic = "indicadores_municipal_PC_65mas"
             unit = " %"
+            name = nVec[5]
+            textColor = "orange"
             break;
           case "PC_Nac_Can":
-            mainColor = "YlOrBr";
-            indic = "indicadores_municipal_PC_Nac_Canarias";
+            mainColor = "YlOrBr"
+            indic = "indicadores_municipal_PC_Nac_Canarias"
             unit = " %"
+            name = nVec[6]
+            textColor = "yellow"
             break;
           case "PC_Nac_ES_XCan":
-            mainColor = "Purples";
-            indic = "indicadores_municipal_PC_Nac_ES_XCanarias";
+            mainColor = "Purples"
+            indic = "indicadores_municipal_PC_Nac_ES_XCanarias"
             unit = " %"
+            name = nVec[7]
+            textColor = "purple"
             break;
           case "PC_Nac_Extr":
-            mainColor = "Reds";
-            indic = "indicadores_municipal_PC_Nac_Extranjero";
+            mainColor = "Reds"
+            indic = "indicadores_municipal_PC_Nac_Extranjero"
             unit = " %"
+            name = nVec[8]
+            textColor = "red"
             break;
           default:
-            mainColor = "Greys";
-            indic = "indicadores_municipal_TOTAL_d";
+            mainColor = "Greys"
+            indic = "indicadores_municipal_TOTAL_d"
             unit = " %"
+            name = "Densidad"
+            textColor = "grey"
             break;
         }
         console.log("selected: " + mainColor + " ,  " + indic)
@@ -427,7 +420,7 @@
               value = d.properties[indic]
               value = value.replace(".","").replace(",",".")
               value = parseFloat(formatNumber3(value))
-              console.log(value)
+              //console.log(value)
               return colorInd(value);
             })
             .on("mouseover", function (d) {
@@ -435,8 +428,8 @@
                     .duration(200)
                     .style("opacity", .7);
                 divM.html(d.properties.label + "<br>" +
-                          formatNumberM(iCol1[0]).replace(",",".") +
-                          " habs.")
+                          formatNumberM(d.properties[iVec[0]]).replace(",",".")
+                          + " habs.")
                     .style("left", (d3.mouse(this)[0]) + "px")
                     .style("top", (d3.mouse(this)[1]) + "px");
                 d3.select(this)
@@ -452,7 +445,7 @@
                     .style("opacity", 0);
                 d3.select(this)
                   .style("stroke", "white")
-                  .style("stroke-width", ".1px")
+                  .style("stroke-width", ".2px")
                   .style("fill", previous_color);
             })
             .on("click", function (d) {
@@ -460,6 +453,7 @@
                             d.properties[indic] + unit)
                 svgM.selectAll("text.legend-title").remove()
                 svgM.selectAll("text.details-legend").remove()
+                svgM.selectAll(".selected-data").remove()
                 svgM.append("text")
                     .attr("x", 10)
                     .attr("y", plotHeight + 10)
@@ -470,9 +464,40 @@
                     .classed("legend-title", true)
                     .text(d.properties.label + " - (" +
                           isla(d.properties.indicadores_municipal_CUISLA) + ")")
-                textColumn(svgM, d.properties, 10, (plotHeight+40), nCol1, iCol1)
-                textColumn(svgM, d.properties, 210, (plotHeight+40), nCol2, iCol2)
-                textColumn(svgM, d.properties, 410, (plotHeight+40), nCol3, iCol3);
+                textData(svgM, d.properties, 0, (plotHeight+40), nVec[0], iVec[0])
+                textData(svgM, d.properties, 0, (plotHeight+60), nVec[1], iVec[1])
+                textData(svgM, d.properties, 0, (plotHeight+80), nVec[2], iVec[2])
+                textData(svgM, d.properties, 170, (plotHeight+40), nVec[3], iVec[3])
+                textData(svgM, d.properties, 170, (plotHeight+60), nVec[4], iVec[4])
+                textData(svgM, d.properties, 170, (plotHeight+80), nVec[5], iVec[5])
+                textData(svgM, d.properties, 340, (plotHeight+40), nVec[6], iVec[6])
+                textData(svgM, d.properties, 340, (plotHeight+60), nVec[7], iVec[7])
+                textData(svgM, d.properties, 340, (plotHeight+80), nVec[8], iVec[8])
+                svgM.append("rect")
+                    .attr("x", 510)
+                    .attr("y", plotHeight)
+                    .attr("rx", 10)
+                    .attr("ry", 10)
+                    .attr("width", 440)
+                    .classed("selected-data", true)
+                    .style("fill", "none")
+                    .style("stroke-width", 5)
+                    .style("stroke", textColor)
+                svgM.append("text")
+                    .attr("x", 520)
+                    .attr("y", plotHeight + 60)
+                    .attr("width", "7em")
+                    .classed("selected-data", true)
+                    .style("fill", textColor)
+                    .text(name + " : ")
+                svgM.append("text")
+                    .attr("x", 700)
+                    .attr("y", plotHeight + 60)
+                    .attr("width", 250)
+                    .classed("selected-data", true)
+                    .style("fill", textColor)
+                    .text(d.properties[indic] + unit)
+                ;
             })
 
             // First Y position to draw the left legend
