@@ -95,7 +95,6 @@
         text-align: center;
         vertical-align: middle;
         height: 90px;
-        padding: 20px;
       }
     </style>
   </head>
@@ -152,7 +151,7 @@
           plotWidth = svgWidth - margin.left - margin.right,
           plotHeight = svgHeight - margin.top - margin.bottom;
 
-      // Format variables
+      // Global format variables
       let formatNumber1 = d3.format(".1f"),
           formatNumber3 = d3.format(".3f"),
           formatNumberM = d3.format(",d");
@@ -169,7 +168,7 @@
                       "translate(" + margin.left + ", " + margin.top + ")");
       }
 
-      // Function to get min value from a property values list
+      // Function to get min value from a property value list
       function indMin (obJson, indicator) {
         let min = Infinity
         for(let i = 0; i < obJson.features.length; i++) {
@@ -183,7 +182,7 @@
         return min;
       }
 
-      // Function to get max value from a property values list
+      // Function to get max value from a property value list
       function indMax (obJson, indicator) {
         let max = 0
         for(let i = 0; i < obJson.features.length; i++) {
@@ -197,7 +196,7 @@
         return max;
       }
 
-      // Function to get the island
+      // Function to get the island name by the CUISLA id
       function isla (cuid) {
         let isla = "Tenerife"
         switch (cuid) {
@@ -226,7 +225,7 @@
         return isla;
       }
 
-      // Function to draw a column of three text rows
+      // Function to draw every detailed data text as a tuple: label - value
       function textData (svgname, data, textX, textY, name, indic) {
         svgname.append("text")
                 .attr("x", textX)
@@ -246,7 +245,7 @@
                 .text(data[indic]);
       }
 
-      // First map loading
+      // First map loading, by default
       getProp("density")
 
       // Get the property selected into the DOM and redraw the paths
@@ -270,7 +269,7 @@
                     "indicadores_municipal_Nac_Extranjero"];
         let url = "https://raw.githubusercontent.com/guanchgonzalez/MU_CID_3B_Vis/main/indicadores_poblacion_municipios-v2.geojson";
 
-        // Clear the previous SVG objects
+        // Clear the previous SVG main objects
         d3.selectAll("g > *").remove();
         d3.selectAll("svg").remove();
         d3.selectAll(".tooltip").remove();
@@ -278,7 +277,7 @@
         // Insert the SVG element into the DOM
         svgM = iniSVG("#geomap_div");
 
-        // Div object for the floating tag
+        // Initialize the div object for the floating tag
         divM = d3.select("#geomap_div")
                   .append("div")
                   .attr("class", "tooltip")
@@ -290,12 +289,12 @@
               .attr('transform', d3.event.transform);
         }
 
-        // Scale the zoom
+        // Delimit the zoom range
         const zoom = d3.zoom()
                         .scaleExtent([1, 8])
                         .on('zoom', zoomed);
 
-        // Call the zoom
+        // Enable the zoom in the SVG object
         svgM.call(zoom);
 
         // Button selection
@@ -359,7 +358,7 @@
         }
         console.log("selected: " + mainColor + " ,  " + indic)
 
-        // Load the data from the geoJSON file and draw the map
+        // Load the data from the external geoJSON file and draw the map
         d3.json(url, function (objectmap) {
 
           // Local variables
@@ -391,7 +390,7 @@
           u = svgM.selectAll("path")
                   .data(objectmap.features)
 
-          // Format variables
+          // Local format variables
           let minD = indMin(objectmap , indic),
               maxD = indMax(objectmap , indic),
               step = parseFloat(formatNumber3(( maxD - minD ) / 9 )),
@@ -420,7 +419,6 @@
               value = d.properties[indic]
               value = value.replace(".","").replace(",",".")
               value = parseFloat(formatNumber3(value))
-              //console.log(value)
               return colorInd(value);
             })
             .on("mouseover", function (d) {
@@ -478,21 +476,21 @@
                     .attr("y", plotHeight)
                     .attr("rx", 10)
                     .attr("ry", 10)
-                    .attr("width", 440)
+                    .attr("width", 460)
                     .classed("selected-data", true)
                     .style("fill", "none")
                     .style("stroke-width", 5)
                     .style("stroke", textColor)
                 svgM.append("text")
-                    .attr("x", 520)
-                    .attr("y", plotHeight + 60)
+                    .attr("x", 530)
+                    .attr("y", plotHeight + 55)
                     .attr("width", "7em")
                     .classed("selected-data", true)
                     .style("fill", textColor)
                     .text(name + " : ")
                 svgM.append("text")
-                    .attr("x", 700)
-                    .attr("y", plotHeight + 60)
+                    .attr("x", 720)
+                    .attr("y", plotHeight + 55)
                     .attr("width", 250)
                     .classed("selected-data", true)
                     .style("fill", textColor)
@@ -500,7 +498,7 @@
                 ;
             })
 
-            // First Y position to draw the left legend
+            // First Y position to draw the left legend with the color range
             yStartLeftLegend = (plotHeight - (labelsVec.length - 1) * (sqSize + 5)) / 2;
 
             // Left legend title (units)
@@ -528,7 +526,7 @@
                   .style("fill", function (d, i) { return color_range[9][i] })
                   .style("stroke", "black");
 
-            // Left legend texts
+            // Left legend label texts
             svgM.append("g")
                 .selectAll("squareLabels")
                 .data(labelsVec.reverse())
