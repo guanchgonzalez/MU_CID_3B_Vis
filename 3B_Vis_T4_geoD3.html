@@ -106,7 +106,6 @@
     <script src="https://d3js.org/d3-array.v1.min.js"></script>
     <script src="https://d3js.org/d3-geo.v1.min.js"></script>
     <script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
-    <script src="https://d3js.org/queue.v1.min.js"></script>
     <script src= "https://d3js.org/d3-color.v1.min.js"></script>
     <script src= "https://d3js.org/d3-interpolate.v1.min.js"></script>
     <script src= "https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
@@ -359,7 +358,8 @@
         }
         console.log("selected: " + mainColor + " ,  " + indic)
 
-        // Load the data from the external geoJSON file and draw the map
+        // Nested function to load the data from the external geoJSON file
+        // and draw the map, avoiding the asynchronous behavior
         d3.json(url, function (objectmap) {
 
           // Local variables
